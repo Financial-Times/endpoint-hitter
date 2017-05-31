@@ -14,9 +14,9 @@ We can execute a series of `POST` requests for the endpoint: `https://{env-domai
 In this case, the response logs will appear in `uuids.log`, with the following format:
 
 ```
-[34mINFO[0m[0000] Content with uuid: 4bb294f6-2b0f-11e5-1875-703401c316fe for transaction tid_Wz0NP5DaGS_endpoint-hitter ended with status code: 200 
-[34mINFO[0m[0000] Content with uuid: 73776692-8bbf-39ab-b2a6-083189b212d8 for transaction tid_O1h15dqVDQ_endpoint-hitter ended with status code: 200 
-[34mINFO[0m[0000] Content with uuid: 1637aeb2-4bd8-11e5-b558-8a9722977189 for transaction tid_4PNNLmyWan_endpoint-hitter ended with status code: 200
+[34mINFO[0m[0000] Content with uuid: 4bb294f6-2b0f-11e5-1875-703401c316fe for transaction tid_Wz0NP5DaGS_endpoint-hitter ended with status code: 200 
+[34mINFO[0m[0000] Content with uuid: 73776692-8bbf-39ab-b2a6-083189b212d8 for transaction tid_O1h15dqVDQ_endpoint-hitter ended with status code: 200 
+[34mINFO[0m[0000] Content with uuid: 1637aeb2-4bd8-11e5-b558-8a9722977189 for transaction tid_4PNNLmyWan_endpoint-hitter ended with status code: 200
 ```
 
 ## Installation

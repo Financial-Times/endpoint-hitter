@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 const appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
@@ -70,7 +70,7 @@ func main() {
 
 	throttle := app.Int(cli.IntOpt{
 		Name:   "throttle",
-		Value: 100,
+		Value:  100,
 		Desc:   "Number of parallel requests",
 		EnvVar: "THROTTLE",
 	})
@@ -83,7 +83,7 @@ func main() {
 	})
 
 	appLog.Info("[Startup] Endpoint Hitter is starting")
-	logFilePath := strings.Split(*uuidFilePath,".")[0]+".log"
+	logFilePath := strings.Split(*uuidFilePath, ".")[0] + ".log"
 	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err == nil {
 		endpointLog.Out = file
@@ -153,8 +153,8 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 			break
 		}
 
-		if count + limit > len(uuids) {
-			limit =  len(uuids) - count
+		if count+limit > len(uuids) {
+			limit = len(uuids) - count
 		}
 
 		var wg sync.WaitGroup
@@ -166,7 +166,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 				url := strings.Replace(targetURL, "{uuid}", uuid, -1)
 				_, status, tid, _ := executeHTTPRequest(url, methodType, uuid, authKey)
 				endpointLog.Infof("Content with uuid: %s for transaction %s ended with status code: %d", uuid, tid, status)
-			}(uuids[count + i])
+			}(uuids[count+i])
 		}
 		wg.Wait()
 
