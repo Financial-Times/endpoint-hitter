@@ -1,0 +1,7 @@
+*.iml
+.idea
+endpoint-hitter*
+.project
+.vscode
+*.log
+*.txt
