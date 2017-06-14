@@ -10,8 +10,8 @@ Other application related logs will be sent to stdout.
 
 For example:
 
-We can execute a series of `POST` requests for the endpoint: `https://{env-domain}/__post-publication-combiner/{uuid}`, for the uuids read from `uuids.txt`.
-In this case, the response logs will appear in `uuids.log`, with the following format:
+We can execute a series of `POST` requests to the endpoint: `https://{env-domain}/__post-publication-combiner/{uuid}`, for the uuids read from `{uuid_file_name}.txt` (`uuid.txt` being the default).
+In this case, the response logs will appear in `{uuid_file_name}.log`, with the following format:
 
 ```
 [34mINFO[0m[0000] Content with uuid: 4bb294f6-2b0f-11e5-1875-703401c316fe for transaction tid_Wz0NP5DaGS_endpoint-hitter ended with status code: 200 
@@ -29,7 +29,7 @@ Download the source code, dependencies:
 
 ## Running locally
 
-1. Run the tests and install the binary:
+1. Install the binary:
 
         go install
 
