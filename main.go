@@ -164,7 +164,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 			go func(uuid string) {
 				defer wg.Done()
 				url := strings.Replace(targetURL, "{uuid}", uuid, -1)
-				_, status, tid, _ := executeHTTPRequest(url, methodType, uuid, authKey)
+				_, status, tid, _ := executeHTTPRequest(url, methodType, authKey)
 				endpointLog.Infof("Content with uuid: %s for transaction %s ended with status code: %d", uuid, tid, status)
 			}(uuids[count+i])
 		}
@@ -174,7 +174,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 	}
 }
 
-func executeHTTPRequest(urlStr string, methodType string, uuid string, authKey string) (b []byte, status int, transactionID string, err error) {
+func executeHTTPRequest(urlStr string, methodType string, authKey string) (b []byte, status int, transactionID string, err error) {
 	req, err := http.NewRequest(methodType, urlStr, nil)
 
 	transactionID = "tid_" + uniuri.NewLen(10) + "_endpoint-hitter"
@@ -190,10 +190,14 @@ func executeHTTPRequest(urlStr string, methodType string, uuid string, authKey s
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return nil, resp.StatusCode, transactionID, fmt.Errorf("Error executing requests for url=%s, error=%v", urlStr, err)
+		return nil, http.StatusInternalServerError, transactionID, fmt.Errorf("Error executing requests for url=%s, error=%v", urlStr, err)
 	}
 
 	defer cleanUp(resp)
+
+	if resp == nil {
+		return nil, http.StatusInternalServerError, transactionID, fmt.Errorf("Response was nil for url: %s", urlStr)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, resp.StatusCode, transactionID, fmt.Errorf("Connecting to %s was not successful. Status: %d", urlStr, resp.StatusCode)
