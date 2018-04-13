@@ -195,10 +195,6 @@ func executeHTTPRequest(urlStr string, methodType string, authKey string) (b []b
 
 	defer cleanUp(resp)
 
-	if resp == nil {
-		return nil, http.StatusInternalServerError, transactionID, fmt.Errorf("Response was nil for url: %s", urlStr)
-	}
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, resp.StatusCode, transactionID, fmt.Errorf("Connecting to %s was not successful. Status: %d", urlStr, resp.StatusCode)
 	}
