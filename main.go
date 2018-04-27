@@ -120,16 +120,20 @@ func main() {
 
 		successCh := make(chan struct{}, 1)
 		successCounter := 0
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
 			for _ := range successCh {
 				successCounter++
 			}
+			wg.Done()
 		}()
 		start := time.Now()
 
 		hitEndpoint(*targetURL, *methodType, *authUser, *authPassword, uuids, *throttle, successCh)
 
 		elapsed := time.Since(start)
+		wg.Wait()
 		appLog.Printf("Import took %s, success count: %v, success rate: %.2f%%", elapsed, successCounter, (successCounter / len(uuids)) * 100)
 
 	}
@@ -149,6 +153,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 
 	for {
 		if count == len(uuids) {
+			close(successCh)
 			break
 		}
 
