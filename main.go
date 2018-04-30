@@ -123,7 +123,7 @@ func main() {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
-			for _ := range successCh {
+			for range successCh {
 				successCounter++
 			}
 			wg.Done()
