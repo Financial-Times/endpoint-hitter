@@ -134,7 +134,7 @@ func main() {
 
 		elapsed := time.Since(start)
 		wg.Wait()
-		appLog.Printf("Import took %s, success count: %v, success rate: %.2f%%", elapsed, successCounter, (successCounter / len(uuids)) * 100)
+		appLog.Printf("Import took %s, out of %v contents success count is: %v, success rate: %.2f%%", elapsed, len(uuids), successCounter, float64((successCounter / len(uuids)) * 100))
 
 	}
 
@@ -146,7 +146,6 @@ func main() {
 
 func hitEndpoint(targetURL string, methodType string, authUser string, authPassword string, uuids []string, throttle int, successCh chan struct{}) {
 	authKey := "Basic " + base64.StdEncoding.EncodeToString([]byte(authUser+":"+authPassword))
-	appLog.Info(authKey)
 
 	count := 0
 	limit := throttle
