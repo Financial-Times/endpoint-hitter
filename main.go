@@ -17,11 +17,14 @@ import (
 	"time"
 )
 
-const appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
+const (
+	appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
+	maxRetries     = 3
+)
 
 var (
-	client      http.Client
-	appLog      = logrus.New()
+	client http.Client
+	appLog = logrus.New()
 )
 
 func main() {
@@ -134,8 +137,7 @@ func main() {
 
 		elapsed := time.Since(start)
 		wg.Wait()
-		appLog.Printf("Import took %s, out of %v contents success count is: %v, success rate: %.2f%%", elapsed, len(uuids), successCounter, float64((successCounter / len(uuids)) * 100))
-
+		appLog.Printf("Import took %s, out of %v contents success count is: %v, success rate: %.2f%%", elapsed, len(uuids), successCounter, float64(successCounter)/float64(len(uuids))*100)
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -167,11 +169,24 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 			go func(uuid string) {
 				defer wg.Done()
 				url := strings.Replace(targetURL, "{uuid}", uuid, -1)
-				status, tid, err := executeHTTPRequest(url, methodType, authKey)
-				if err != nil {
-					appLog.WithField("transaction_id", tid).WithField("url", url).WithField("status", status).Errorf("Error: %v", err.Error())
-				} else {
-					successCh <- struct{}{}
+				retryCount := 0
+				for {
+					if retryCount == maxRetries {
+						appLog.WithField("url", url).Errorf("Failed after %v retries", maxRetries)
+						break
+					}
+					status, tid, err := executeHTTPRequest(url, methodType, authKey)
+					if err == nil {
+						successCh <- struct{}{}
+						break
+					}
+					appLog.WithField("transaction_id", tid).WithField("url", url).WithField("status", status).WithField("retry", retryCount).Errorf("Error: %v", err.Error())
+					if status != http.StatusGatewayTimeout && status != http.StatusServiceUnavailable {
+						//permanent error
+						break
+					}
+					time.Sleep(3 * time.Second)
+					retryCount++
 				}
 
 			}(uuids[count+i])
