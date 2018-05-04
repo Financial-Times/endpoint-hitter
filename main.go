@@ -17,12 +17,14 @@ import (
 	"time"
 )
 
-const appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
+const (
+	appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
+	maxRetries     = 3
+)
 
 var (
-	client      http.Client
-	endpointLog = logrus.New()
-	appLog      = logrus.New()
+	client http.Client
+	appLog = logrus.New()
 )
 
 func main() {
@@ -83,13 +85,6 @@ func main() {
 	})
 
 	appLog.Info("[Startup] Endpoint Hitter is starting")
-	logFilePath := strings.Split(*uuidFilePath, ".")[0] + ".log"
-	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0666)
-	if err == nil {
-		endpointLog.Out = file
-	} else {
-		appLog.Info("Failed to log to file, using default stderr")
-	}
 
 	client = http.Client{
 		Transport: &http.Transport{
@@ -126,30 +121,40 @@ func main() {
 			appLog.Fatal(err)
 		}
 
+		successCh := make(chan struct{}, 1)
+		successCounter := 0
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			for range successCh {
+				successCounter++
+			}
+			wg.Done()
+		}()
 		start := time.Now()
 
-		hitEndpoint(*targetURL, *methodType, *authUser, *authPassword, uuids, *throttle)
+		hitEndpoint(*targetURL, *methodType, *authUser, *authPassword, uuids, *throttle, successCh)
 
 		elapsed := time.Since(start)
-		appLog.Printf("Import took %s ", elapsed)
-
+		wg.Wait()
+		appLog.Printf("Import took %s, out of %v contents success count is: %v, success rate: %.2f%%", elapsed, len(uuids), successCounter, float64(successCounter)/float64(len(uuids))*100)
 	}
-	err = app.Run(os.Args)
-	if err != nil {
+
+	if err := app.Run(os.Args); err != nil {
 		appLog.Fatalf("App could not start, error=[%s]\n", err)
 		return
 	}
 }
 
-func hitEndpoint(targetURL string, methodType string, authUser string, authPassword string, uuids []string, throttle int) {
+func hitEndpoint(targetURL string, methodType string, authUser string, authPassword string, uuids []string, throttle int, successCh chan struct{}) {
 	authKey := "Basic " + base64.StdEncoding.EncodeToString([]byte(authUser+":"+authPassword))
-	appLog.Info(authKey)
 
 	count := 0
 	limit := throttle
 
 	for {
 		if count == len(uuids) {
+			close(successCh)
 			break
 		}
 
@@ -164,8 +169,26 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 			go func(uuid string) {
 				defer wg.Done()
 				url := strings.Replace(targetURL, "{uuid}", uuid, -1)
-				_, status, tid, _ := executeHTTPRequest(url, methodType, authKey)
-				endpointLog.Infof("Content with uuid: %s for transaction %s ended with status code: %d", uuid, tid, status)
+				retryCount := 0
+				for {
+					if retryCount == maxRetries {
+						appLog.WithField("url", url).Errorf("Failed after %v retries", maxRetries)
+						break
+					}
+					status, tid, err := executeHTTPRequest(url, methodType, authKey)
+					if err == nil {
+						successCh <- struct{}{}
+						break
+					}
+					appLog.WithField("transaction_id", tid).WithField("url", url).WithField("status", status).WithField("retry", retryCount).Errorf("Error: %v", err.Error())
+					if status != http.StatusGatewayTimeout && status != http.StatusServiceUnavailable {
+						//permanent error
+						break
+					}
+					time.Sleep(3 * time.Second)
+					retryCount++
+				}
+
 			}(uuids[count+i])
 		}
 		wg.Wait()
@@ -174,41 +197,35 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 	}
 }
 
-func executeHTTPRequest(urlStr string, methodType string, authKey string) (b []byte, status int, transactionID string, err error) {
+func executeHTTPRequest(urlStr string, methodType string, authKey string) (status int, transactionID string, err error) {
 	req, err := http.NewRequest(methodType, urlStr, nil)
 
 	transactionID = "tid_" + uniuri.NewLen(10) + "_endpoint-hitter"
 	//Log continuously the transaction ids to see a some kind of status. Remove if not needed.
-	appLog.Info(transactionID)
 	req.Header.Add("X-Request-Id", transactionID)
 	req.Header.Add("Authorization", authKey)
 
 	if err != nil {
-		return nil, http.StatusInternalServerError, transactionID, fmt.Errorf("Error creating requests for url=%s, error=%v", urlStr, err)
+		return http.StatusInternalServerError, transactionID, fmt.Errorf("creating request returned error: %v", err)
 	}
 
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return nil, http.StatusInternalServerError, transactionID, fmt.Errorf("Error executing requests for url=%s, error=%v", urlStr, err)
+		return http.StatusInternalServerError, transactionID, fmt.Errorf("executing request returned error: %v", err)
 	}
 
 	defer cleanUp(resp)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, resp.StatusCode, transactionID, fmt.Errorf("Connecting to %s was not successful. Status: %d", urlStr, resp.StatusCode)
+		return resp.StatusCode, transactionID, fmt.Errorf("request returned a non-successfull response code")
 	}
 
-	b, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, http.StatusOK, transactionID, fmt.Errorf("Could not parse payload from response for url=%s, error=%v", urlStr, err)
-	}
-
-	return b, http.StatusOK, transactionID, err
+	_, err = ioutil.ReadAll(resp.Body)
+	return http.StatusOK, transactionID, err
 }
 
 func cleanUp(resp *http.Response) {
-
 	_, err := io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
 		appLog.Warningf("[%v]", err)
