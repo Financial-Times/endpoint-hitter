@@ -16,16 +16,8 @@ We can execute a series of `POST` requests to the endpoint: `https://{env-domain
 
 Download the source code, dependencies:
 
-        go get -u github.com/Financial-Times/endpoint-hitter
-        cd $GOPATH/src/github.com/Financial-Times/endpoint-hitter
-        go build .
+```sh
+go build .
 
-## Running locally
-
-1. Install the binary:
-
-        go install
-
-2. Run the binary (using the `help` flag to see the available optional arguments):
-
-        $GOPATH/bin/endpoint-hitter [--help]
+./endpoint-hitter [--help]
+```
