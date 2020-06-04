@@ -21,3 +21,29 @@ go build .
 
 ./endpoint-hitter [--help]
 ```
+
+## Deployment in k8s as a job
+
+If you want to run it in k8s first you need to build a docker image:
+
+```sh
+docker build -t coco/endpoint-hitter:latest .
+```
+
+and push it in docker hub:
+
+```sh
+docker push coco/endpoint-hitter:latest
+```
+
+then make the necessary changes in `./deployment/job.yaml` and deploy the job:
+
+```sh
+kubectl apply -f ./deployment/job.yaml
+```
+
+when the job is done you can delete it via:
+
+```sh
+kubectl delete job endpoint-hitter
+```

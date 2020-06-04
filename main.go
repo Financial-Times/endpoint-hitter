@@ -4,9 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
-	"github.com/dchest/uniuri"
-	"github.com/jawher/mow.cli"
-	"github.com/lytics/logrus"
 	"io"
 	"io/ioutil"
 	"net"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dchest/uniuri"
+	cli "github.com/jawher/mow.cli"
+	"github.com/lytics/logrus"
 )
 
 const (
