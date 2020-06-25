@@ -16,16 +16,34 @@ We can execute a series of `POST` requests to the endpoint: `https://{env-domain
 
 Download the source code, dependencies:
 
-        go get -u github.com/Financial-Times/endpoint-hitter
-        cd $GOPATH/src/github.com/Financial-Times/endpoint-hitter
-        go build .
+```sh
+go build .
 
-## Running locally
+./endpoint-hitter [--help]
+```
 
-1. Install the binary:
+## Deployment in k8s as a job
 
-        go install
+If you want to run it in k8s first you need to build a docker image:
 
-2. Run the binary (using the `help` flag to see the available optional arguments):
+```sh
+docker build -t coco/endpoint-hitter:latest .
+```
 
-        $GOPATH/bin/endpoint-hitter [--help]
+and push it in docker hub:
+
+```sh
+docker push coco/endpoint-hitter:latest
+```
+
+then make the necessary changes in `./deployment/job.yaml` and deploy the job:
+
+```sh
+kubectl apply -f ./deployment/job.yaml
+```
+
+when the job is done you can delete it via:
+
+```sh
+kubectl delete job endpoint-hitter
+```
