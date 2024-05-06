@@ -8,4 +8,4 @@ require (
 	github.com/lytics/logrus v0.0.0-20170528191427-4389a17ed024
 )
 
-require golang.org/x/sys v0.19.0 // indirect
+require golang.org/x/sys v0.20.0 // indirect
