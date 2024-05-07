@@ -8,6 +8,7 @@ workflows:
           context:
             - cm-team-github
             - dockerhub-shared
+            - cm-team-dockerhub
 
 jobs:
   build:
