@@ -1,4 +1,5 @@
-version: 2
+version: 2.1
+
 jobs:
   build:
     docker:
@@ -6,3 +7,6 @@ jobs:
     steps:
       - checkout
       - run: go build
+    context:
+      - cm-team-github
+      - dockerhub-shared
