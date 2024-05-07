@@ -7,6 +7,12 @@ jobs:
     steps:
       - checkout
       - run: go build
-    context:
-      - cm-team-github
-      - dockerhub-shared
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build:
+          context:
+            - cm-team-github
+            - dockerhub-shared
