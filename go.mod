@@ -1,6 +1,6 @@
 module github.com/Financial-Times/endpoint-hitter
 
-go 1.22
+go 1.24.2
 
 require (
 	github.com/dchest/uniuri v1.2.0
