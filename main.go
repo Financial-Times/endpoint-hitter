@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	client http.Client
-	appLog = logrus.New()
+	client       http.Client
+	appLog       = logrus.New()
+	httpExecutor = executeHTTPRequest
 )
 
 func main() {
@@ -106,7 +107,7 @@ func main() {
 		if file, err := os.Open(*uuidFilePath); err == nil {
 			// make sure it gets closed
 			defer func() {
-				if err := file.Close(); err != nil {
+				if err = file.Close(); err != nil {
 					appLog.Warnf("warning: failed to close uuids.txt file: %v", err)
 				}
 			}()
@@ -179,7 +180,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 						appLog.WithField("url", url).Errorf("Failed after %v retries", maxRetries)
 						break
 					}
-					status, tid, err := executeHTTPRequest(url, methodType, authKey)
+					status, tid, err := httpExecutor(url, methodType, authKey) // make it testable
 					if err == nil {
 						successCh <- struct{}{}
 						break
