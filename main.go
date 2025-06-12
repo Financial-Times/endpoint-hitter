@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -19,13 +18,14 @@ import (
 )
 
 const (
-	appDescription = "Small application that is able to hit in parallel a requested endpoint - llogging whether the request was successful."
+	appDescription = "Small application that is able to hit in parallel a requested endpoint - logging whether the request was successful."
 	maxRetries     = 3
 )
 
 var (
-	client http.Client
-	appLog = logrus.New()
+	client       http.Client
+	appLog       = logrus.New()
+	httpExecutor = executeHTTPRequest
 )
 
 func main() {
@@ -106,7 +106,11 @@ func main() {
 		var uuids []string
 		if file, err := os.Open(*uuidFilePath); err == nil {
 			// make sure it gets closed
-			defer file.Close()
+			defer func() {
+				if err = file.Close(); err != nil {
+					appLog.Warnf("warning: failed to close uuids.txt file: %v", err)
+				}
+			}()
 
 			// create a new scanner and read the file line by line
 			scanner := bufio.NewScanner(file)
@@ -176,7 +180,7 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 						appLog.WithField("url", url).Errorf("Failed after %v retries", maxRetries)
 						break
 					}
-					status, tid, err := executeHTTPRequest(url, methodType, authKey)
+					status, tid, err := httpExecutor(url, methodType, authKey) // make it testable
 					if err == nil {
 						successCh <- struct{}{}
 						break
@@ -202,13 +206,13 @@ func executeHTTPRequest(urlStr string, methodType string, authKey string) (statu
 	req, err := http.NewRequest(methodType, urlStr, nil)
 
 	transactionID = "tid_" + uniuri.NewLen(10) + "_endpoint-hitter"
-	//Log continuously the transaction ids to see a some kind of status. Remove if not needed.
-	req.Header.Add("X-Request-Id", transactionID)
-	req.Header.Add("Authorization", authKey)
-
 	if err != nil {
 		return http.StatusInternalServerError, transactionID, fmt.Errorf("creating request returned error: %v", err)
 	}
+
+	//Log continuously the transaction ids to see a some kind of status. Remove if not needed.
+	req.Header.Add("X-Request-Id", transactionID)
+	req.Header.Add("Authorization", authKey)
 
 	resp, err := client.Do(req)
 
@@ -222,12 +226,12 @@ func executeHTTPRequest(urlStr string, methodType string, authKey string) (statu
 		return resp.StatusCode, transactionID, fmt.Errorf("request returned a non-successfull response code")
 	}
 
-	_, err = ioutil.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	return http.StatusOK, transactionID, err
 }
 
 func cleanUp(resp *http.Response) {
-	_, err := io.Copy(ioutil.Discard, resp.Body)
+	_, err := io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		appLog.Warningf("[%v]", err)
 	}
