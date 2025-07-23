@@ -13,6 +13,8 @@ spec:
           - name: "TARGET_URL"
             value: "http://post-publication-combiner:8080/{uuid}"
           - name: "THROTTLE"
-            value: "3"
+            value: "2"
+          - name: "WAIT_AFTER_THROTTLE"
+            value: "50"
       restartPolicy: Never
   backoffLimit: 4

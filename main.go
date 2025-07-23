@@ -73,7 +73,7 @@ func main() {
 
 	throttle := app.Int(cli.IntOpt{
 		Name:   "throttle",
-		Value:  100,
+		Value:  10,
 		Desc:   "Number of parallel requests",
 		EnvVar: "THROTTLE",
 	})
@@ -83,6 +83,13 @@ func main() {
 		Value:  "uuids.txt",
 		Desc:   "Relative path to the file containing all the input uuids.",
 		EnvVar: "UUID_FILE_PATH",
+	})
+
+	waitAfterThrottle := app.Int(cli.IntOpt{
+		Name:   "waitAfterThrottle",
+		Value:  235,
+		Desc:   "Number of ms waiting after group of parallel requests",
+		EnvVar: "WAIT_AFTER_THROTTLE",
 	})
 
 	appLog.Info("[Startup] Endpoint Hitter is starting")
@@ -138,7 +145,7 @@ func main() {
 		}()
 		start := time.Now()
 
-		hitEndpoint(*targetURL, *methodType, *authUser, *authPassword, uuids, *throttle, successCh)
+		hitEndpoint(*targetURL, *methodType, *authUser, *authPassword, uuids, *throttle, *waitAfterThrottle, successCh)
 
 		elapsed := time.Since(start)
 		wg.Wait()
@@ -151,7 +158,8 @@ func main() {
 	}
 }
 
-func hitEndpoint(targetURL string, methodType string, authUser string, authPassword string, uuids []string, throttle int, successCh chan struct{}) {
+// nolint:gocognit
+func hitEndpoint(targetURL string, methodType string, authUser string, authPassword string, uuids []string, throttle int, waitAfterThrottle int, successCh chan struct{}) {
 	authKey := "Basic " + base64.StdEncoding.EncodeToString([]byte(authUser+":"+authPassword))
 
 	count := 0
@@ -177,7 +185,10 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 				retryCount := 0
 				for {
 					if retryCount == maxRetries {
-						appLog.WithField("url", url).Errorf("Failed after %v retries", maxRetries)
+						appLog.
+							WithField("url", url).
+							WithField("uuid", uuid).
+							Errorf("Failed after %v retries", maxRetries)
 						break
 					}
 					status, tid, err := httpExecutor(url, methodType, authKey) // make it testable
@@ -185,8 +196,14 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 						successCh <- struct{}{}
 						break
 					}
-					appLog.WithField("transaction_id", tid).WithField("url", url).WithField("status", status).WithField("retry", retryCount).Errorf("Error: %v", err.Error())
-					if status != http.StatusGatewayTimeout && status != http.StatusServiceUnavailable {
+					appLog.WithField("transaction_id", tid).
+						WithField("url", url).
+						WithField("uuid", uuid).
+						WithField("status", status).
+						WithField("retry", retryCount).
+						Errorf("Error: %v", err.Error())
+					// We can retry 500 InternalServerError and 503 ServiceUnavailable as they usually pass on manual retry
+					if status != http.StatusGatewayTimeout && status != http.StatusServiceUnavailable && status != http.StatusInternalServerError {
 						//permanent error
 						break
 					}
@@ -198,6 +215,10 @@ func hitEndpoint(targetURL string, methodType string, authUser string, authPassw
 		}
 		wg.Wait()
 
+		if count%1002 == 0 {
+			appLog.Infof("Processed: %d UUIDs to the Topic out of: %d", count, len(uuids))
+		}
+		time.Sleep(time.Duration(waitAfterThrottle) * time.Millisecond)
 		count = count + limit
 	}
 }
@@ -210,7 +231,7 @@ func executeHTTPRequest(urlStr string, methodType string, authKey string) (statu
 		return http.StatusInternalServerError, transactionID, fmt.Errorf("creating request returned error: %v", err)
 	}
 
-	//Log continuously the transaction ids to see a some kind of status. Remove if not needed.
+	//Log continuously the transaction ids to see some kind of status. Remove if not needed.
 	req.Header.Add("X-Request-Id", transactionID)
 	req.Header.Add("Authorization", authKey)
 

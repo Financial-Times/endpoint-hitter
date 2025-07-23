@@ -90,7 +90,7 @@ func TestHitEndpoint_Success(t *testing.T) {
 	uuids := []string{"uuid1", "uuid2", "uuid3"}
 	successCh := make(chan struct{}, len(uuids))
 
-	hitEndpoint("http://fake.com/resource/{uuid}", "GET", "user", "pass", uuids, 2, successCh)
+	hitEndpoint("http://fake.com/resource/{uuid}", "GET", "user", "pass", uuids, 2, 0, successCh)
 
 	// Count the number of successes received
 	count := 0
@@ -123,7 +123,7 @@ func TestHitEndpoint_WithRetry(t *testing.T) {
 	successCh := make(chan struct{}, 1)
 
 	start := time.Now()
-	hitEndpoint("http://fake.com/resource/{uuid}", "GET", "user", "pass", uuids, 1, successCh)
+	hitEndpoint("http://fake.com/resource/{uuid}", "GET", "user", "pass", uuids, 1, 0, successCh)
 	duration := time.Since(start)
 
 	// Check that the retry happened (takes at least 3s due to time.Sleep)
